@@ -1,5 +1,5 @@
 var request = require("request"),
-    stream = require("stream");
+    stream = require("readable-stream");
 
 var Tinder = module.exports = function Tinder(options) {
   options = options || {};
@@ -8,24 +8,77 @@ var Tinder = module.exports = function Tinder(options) {
 
   stream.Readable.call(this, options);
 
+  this.facebookId = options.facebookId || null;
+  this.facebookToken = options.facebookToken || null;
   this.token = options.token || null;
   this.rootUrl = options.rootUrl || "https://api.gotinder.com";
 
+  var self = this;
   this.request = request.defaults({
-    headers: {
-      "authorization": "Token token=\"" + this.token + "\"",
-      "x-auth-token": this.token,
-      "user-agent": "Tinder/3.0.2 (iPhone; iOS 7.0.4; Scale/2.00)",
-    },
     json: true,
+    headers: Object.create(null, {
+      "authorization": {
+        get: function get() { return "Token token=\"" + self.token + "\""; },
+        enumerable: true,
+      },
+      "x-auth-token": {
+        get: function get() { return self.token; },
+        enumerable: true,
+      },
+    }),
   });
 };
 Tinder.prototype = Object.create(stream.Readable.prototype, {constructor: {value: Tinder}});
 
 Tinder.prototype._read = function _read(n) {};
 
+Tinder.prototype.authenticate = function authenticate(options, cb) {
+  if (typeof options === "function") {
+    cb = options;
+    options = null;
+  }
+
+  options = options || {};
+
+  if ((!options.facebookId && !this.facebookId) || (!options.facebookToken && !this.facebookToken)) {
+    return cb(Error("facebookId and facebookToken parameters are required"));
+  }
+
+  var config = {
+    method: "POST",
+    uri: this.rootUrl + "/auth",
+    json: {
+      facebook_id: options.facebookId || this.facebookId,
+      facebook_token: options.facebookToken || this.facebookToken,
+    },
+  };
+
+  var self = this;
+  this.request(config, function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
+    if (res.statusCode !== 200) {
+      return cb(Error("invalid status; expected 200 but got " + res.statusCode));
+    }
+
+    if (!data.token) {
+      return cb(Error("no token found in response, probably unsuccessful"));
+    }
+
+    self.token = data.token;
+
+    return cb(err, data);
+  });
+};
+
 Tinder.prototype.getMyProfile = function getMyProfile(cb) {
   this.request(this.rootUrl + "/profile", function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
     if (res.statusCode !== 200) {
       return cb(Error("invalid status; expected 200 but got " + res.statusCode));
     }
@@ -36,6 +89,31 @@ Tinder.prototype.getMyProfile = function getMyProfile(cb) {
 
 Tinder.prototype.getRecommendations = function getRecommendations(cb) {
   this.request(this.rootUrl + "/user/recs", function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
+    if (res.statusCode !== 200) {
+      return cb(Error("invalid status; expected 200 but got " + res.statusCode));
+    }
+
+    return cb(err, data);
+  });
+};
+
+Tinder.prototype.getUpdates = function getUpdates(cb) {
+  var config = {
+    uri: this.rootUrl + "/updates",
+    json: {
+      last_activity_date: new Date().toISOString(),
+    },
+  };
+
+  this.request.post(config, function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
     if (res.statusCode !== 200) {
       return cb(Error("invalid status; expected 200 but got " + res.statusCode));
     }
@@ -46,6 +124,45 @@ Tinder.prototype.getRecommendations = function getRecommendations(cb) {
 
 Tinder.prototype.getUser = function getUser(id, cb) {
   this.request(this.rootUrl + "/user/" + id, function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
+    if (res.statusCode !== 200) {
+      return cb(Error("invalid status; expected 200 but got " + res.statusCode));
+    }
+
+    return cb(err, data);
+  });
+};
+
+Tinder.prototype.getMatch = function getMatch(id, cb) {
+  this.request(this.rootUrl + "/user/matches/" + id, function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
+    if (res.statusCode !== 200) {
+      return cb(Error("invalid status; expected 200 but got " + res.statusCode));
+    }
+
+    return cb(err, data);
+  });
+};
+
+Tinder.prototype.sendMessage = function sendMessage(matchId, message, cb) {
+  var config = {
+    uri: this.rootUrl + "/user/matches/" + matchId,
+    json: {
+      message: message,
+    },
+  };
+
+  this.request.post(config, function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
     if (res.statusCode !== 200) {
       return cb(Error("invalid status; expected 200 but got " + res.statusCode));
     }
@@ -56,6 +173,10 @@ Tinder.prototype.getUser = function getUser(id, cb) {
 
 Tinder.prototype.likeUser = function likeUser(id, cb) {
   this.request(this.rootUrl + "/like/" + id, function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
     if (res.statusCode !== 200) {
       return cb(Error("invalid status; expected 200 but got " + res.statusCode));
     }
@@ -66,12 +187,18 @@ Tinder.prototype.likeUser = function likeUser(id, cb) {
 
 Tinder.prototype.setLocation = function setLocation(options, cb) {
   var config = {
-    method: "POST",
     uri: this.rootUrl + "/ping",
-    json: options,
+    json: {
+      lat: options.latitude,
+      lon: options.longitude,
+    },
   };
 
-  this.request(config, function(err, res, data) {
+  this.request.post(config, function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
     if (res.statusCode !== 200) {
       return cb(Error("invalid status; expected 200 but got " + res.statusCode));
     }

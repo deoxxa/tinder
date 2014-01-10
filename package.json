@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "main": "app.js",
   "dependencies": {
-    "request": "~2.30.0"
+    "request": "~2.30.0",
+    "readable-stream": "~1.1.9"
   }
 }

@@ -3,37 +3,44 @@
 var Tinder = require("./index");
 
 var tinder = new Tinder({
-  token: "ADD_TOKEN",
+  facebookId: "YOUR_FACEBOOK_ID",
+  facebookToken: "YOUR_FACEBOOK_TOKEN",
 });
 
+tinder.on("error", console.trace);
+
 tinder.on("data", function(recommendation) {
-  console.log("liking user %s (%s)", recommendation._id, recommendation.name);
+  console.log("[%s] liking user %s (%s)", new Date().toISOString(), recommendation._id, recommendation.name);
 
   tinder.likeUser(recommendation._id, function(err, res) {
     if (err) {
       return console.trace(err);
     }
 
+    if (!res) {
+      return console.trace(Error("no response???"));
+    }
+
     if (res && res.match) {
-      console.log("matched with user %s (%s)", recommendation._id, recommendation.name);
+      console.log("[%s] matched with user %s (%s)", new Date().toISOString(), recommendation._id, recommendation.name);
     }
   });
 });
 
 tinder.on("idle", function() {
-  console.log("now idle, will wait a minute");
+  console.log("[%s] now idle, will wait a minute", new Date().toISOString());
 
   setTimeout(function() {
     tinder.beginPolling();
-  }, 30 * 1000);
+  }, 60 * 1000);
 });
 
-tinder.setLocation({lat: ..., lon: ...}, function(err, res) {
+tinder.authenticate(function(err, res) {
   if (err) {
     return console.trace(err);
   }
 
-  console.log("location set, time to begin polling");
+  console.log(JSON.stringify(res, null, 2));
 
-  return tinder.beginPolling();
+  tinder.beginPolling();
 });
