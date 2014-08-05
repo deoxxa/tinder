@@ -81,6 +81,32 @@ Tinder.prototype.getMyProfile = function getMyProfile(cb) {
   });
 };
 
+Tinder.prototype.updateMyProfile = function updateProfile(options, cb) {
+
+  // Valid options: distance_filter: int, age_filter_min: int, age_filter_max: int, gender_filter: (0=male, 1=female), discoverable: bool
+
+  var config = {
+    method: "POST",
+    uri: this.rootUrl + "/profile",
+    json: options
+  }
+
+  this.request(config, function(err, res, data) {
+
+    if (err) {
+      return cb(err);
+    }
+
+    if (res.statusCode !== 200) {
+      return cb(Error("invalid status; expected 200 but got " + res.statusCode));
+    }
+
+    return cb(err, data);
+
+  });
+
+};
+
 Tinder.prototype.getRecommendations = function getRecommendations(cb) {
   this.request(this.rootUrl + "/user/recs", function(err, res, data) {
     if (err) {
