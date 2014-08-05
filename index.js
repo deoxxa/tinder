@@ -95,11 +95,19 @@ Tinder.prototype.getRecommendations = function getRecommendations(cb) {
   });
 };
 
-Tinder.prototype.getUpdates = function getUpdates(cb) {
+Tinder.prototype.getUpdates = function getUpdates(from, cb) {
+
+  if(!cb) {
+    cb = from;
+    from = new Date().toISOString()
+  } else {
+    from = new Date(from);
+  }
+
   var config = {
     uri: this.rootUrl + "/updates",
     json: {
-      last_activity_date: new Date().toISOString(),
+      last_activity_date: from,
     },
   };
 
