@@ -150,6 +150,47 @@ Tinder.prototype.getUpdates = function getUpdates(from, cb) {
   });
 };
 
+Tinder.prototype.getMoments = function getMoments(cb) {
+
+  var config = {
+    uri: this.rootUrl + "/feed/moments"
+  };
+
+  this.request.post(config, function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
+    if (res.statusCode !== 200) {
+      return cb(Error("invalid status; expected 200 but got " + res.statusCode));
+    }
+
+    return cb(err, data.moments);
+  });
+
+}
+
+Tinder.prototype.likeMoment = function(id, cb) {
+
+  var config = {
+    method: "POST",
+    uri: this.rootUrl + "/moment/" + id + "/like"
+  }
+
+  this.request(config, function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
+    if (res.statusCode !== 200) {
+      return cb(Error("invalid status; expected 200 but got " + res.statusCode));
+    }
+
+    return cb(err, data);
+  });
+};
+
+
 Tinder.prototype.getUser = function getUser(id, cb) {
   this.request(this.rootUrl + "/user/" + id, function(err, res, data) {
     if (err) {
