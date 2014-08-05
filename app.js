@@ -51,6 +51,8 @@ tinder.authenticate(function(err, res) {
   }
 
   console.log("[%s] logged in as user %s (%s)", new Date().toISOString(), res.user.full_name, res.user._id);
+  console.log("[%s] filter: %s between %s & %s within %s", new Date().toISOString(), res.user.gender_filter ? "females" : "males", res.user.age_filter_min, res.user.age_filter_max, res.user.distance_filter);
+  
   tinder.beginPolling();
 
 });
