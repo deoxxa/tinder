@@ -8,7 +8,6 @@ var Tinder = module.exports = function Tinder(options) {
 
   stream.Readable.call(this, options);
 
-  this.facebookId = options.facebookId || null;
   this.facebookToken = options.facebookToken || null;
   this.token = options.token || null;
   this.rootUrl = options.rootUrl || "https://api.gotinder.com";
@@ -17,10 +16,6 @@ var Tinder = module.exports = function Tinder(options) {
   this.request = request.defaults({
     json: true,
     headers: Object.create(null, {
-      "authorization": {
-        get: function get() { return "Token token=\"" + self.token + "\""; },
-        enumerable: true,
-      },
       "x-auth-token": {
         get: function get() { return self.token; },
         enumerable: true,
@@ -40,15 +35,14 @@ Tinder.prototype.authenticate = function authenticate(options, cb) {
 
   options = options || {};
 
-  if ((!options.facebookId && !this.facebookId) || (!options.facebookToken && !this.facebookToken)) {
-    return cb(Error("facebookId and facebookToken parameters are required"));
+  if (!options.facebookToken && !this.facebookToken) {
+    return cb(Error("facebookToken parameter is required"));
   }
 
   var config = {
     method: "POST",
     uri: this.rootUrl + "/auth",
     json: {
-      facebook_id: options.facebookId || this.facebookId,
       facebook_token: options.facebookToken || this.facebookToken,
     },
   };
