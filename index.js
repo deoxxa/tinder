@@ -8,7 +8,6 @@ var Tinder = module.exports = function Tinder(options) {
 
   stream.Readable.call(this, options);
 
-  this.facebookId = options.facebookId || null;
   this.facebookToken = options.facebookToken || null;
   this.token = options.token || null;
   this.rootUrl = options.rootUrl || "https://api.gotinder.com";
@@ -17,10 +16,6 @@ var Tinder = module.exports = function Tinder(options) {
   this.request = request.defaults({
     json: true,
     headers: Object.create(null, {
-      "authorization": {
-        get: function get() { return "Token token=\"" + self.token + "\""; },
-        enumerable: true,
-      },
       "x-auth-token": {
         get: function get() { return self.token; },
         enumerable: true,
@@ -40,15 +35,14 @@ Tinder.prototype.authenticate = function authenticate(options, cb) {
 
   options = options || {};
 
-  if ((!options.facebookId && !this.facebookId) || (!options.facebookToken && !this.facebookToken)) {
-    return cb(Error("facebookId and facebookToken parameters are required"));
+  if (!options.facebookToken && !this.facebookToken) {
+    return cb(Error("facebookToken parameter is required"));
   }
 
   var config = {
     method: "POST",
     uri: this.rootUrl + "/auth",
     json: {
-      facebook_id: options.facebookId || this.facebookId,
       facebook_token: options.facebookToken || this.facebookToken,
     },
   };
@@ -87,6 +81,32 @@ Tinder.prototype.getMyProfile = function getMyProfile(cb) {
   });
 };
 
+Tinder.prototype.updateMyProfile = function updateProfile(options, cb) {
+
+  // Valid options: distance_filter: int, age_filter_min: int, age_filter_max: int, gender_filter: (0=male, 1=female), discoverable: bool
+
+  var config = {
+    method: "POST",
+    uri: this.rootUrl + "/profile",
+    json: options
+  }
+
+  this.request(config, function(err, res, data) {
+
+    if (err) {
+      return cb(err);
+    }
+
+    if (res.statusCode !== 200) {
+      return cb(Error("invalid status; expected 200 but got " + res.statusCode));
+    }
+
+    return cb(err, data);
+
+  });
+
+};
+
 Tinder.prototype.getRecommendations = function getRecommendations(cb) {
   this.request(this.rootUrl + "/user/recs", function(err, res, data) {
     if (err) {
@@ -101,11 +121,19 @@ Tinder.prototype.getRecommendations = function getRecommendations(cb) {
   });
 };
 
-Tinder.prototype.getUpdates = function getUpdates(cb) {
+Tinder.prototype.getUpdates = function getUpdates(from, cb) {
+
+  if(!cb) {
+    cb = from;
+    from = new Date().toISOString()
+  } else {
+    from = new Date(from);
+  }
+
   var config = {
     uri: this.rootUrl + "/updates",
     json: {
-      last_activity_date: new Date().toISOString(),
+      last_activity_date: from,
     },
   };
 
@@ -121,6 +149,47 @@ Tinder.prototype.getUpdates = function getUpdates(cb) {
     return cb(err, data);
   });
 };
+
+Tinder.prototype.getMoments = function getMoments(cb) {
+
+  var config = {
+    uri: this.rootUrl + "/feed/moments"
+  };
+
+  this.request.post(config, function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
+    if (res.statusCode !== 200) {
+      return cb(Error("invalid status; expected 200 but got " + res.statusCode));
+    }
+
+    return cb(err, data.moments);
+  });
+
+}
+
+Tinder.prototype.likeMoment = function(id, cb) {
+
+  var config = {
+    method: "POST",
+    uri: this.rootUrl + "/moment/" + id + "/like"
+  }
+
+  this.request(config, function(err, res, data) {
+    if (err) {
+      return cb(err);
+    }
+
+    if (res.statusCode !== 200) {
+      return cb(Error("invalid status; expected 200 but got " + res.statusCode));
+    }
+
+    return cb(err, data);
+  });
+};
+
 
 Tinder.prototype.getUser = function getUser(id, cb) {
   this.request(this.rootUrl + "/user/" + id, function(err, res, data) {

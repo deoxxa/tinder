@@ -1,10 +1,16 @@
 #!/usr/bin/env node
 
+var facebookToken = process.argv[2];
+
+if(!facebookToken) {
+  console.error("./app.js <facebookToken>");
+  process.exit(1);
+}
+
 var Tinder = require("./index");
 
 var tinder = new Tinder({
-  facebookId: "YOUR_FACEBOOK_ID",
-  facebookToken: "YOUR_FACEBOOK_TOKEN",
+  facebookToken: facebookToken,
 });
 
 tinder.on("error", console.trace);
@@ -13,7 +19,11 @@ tinder.on("data", function(recommendation) {
   console.log("[%s] liking user %s (%s)", new Date().toISOString(), recommendation._id, recommendation.name);
 
   tinder.likeUser(recommendation._id, function(err, res) {
+
     if (err) {
+      if(~err.indexOf('429')) {
+        return console.error("[%s] Too many requests, skipping like.", new Date().toISOString());
+      }
       return console.trace(err);
     }
 
@@ -40,7 +50,9 @@ tinder.authenticate(function(err, res) {
     return console.trace(err);
   }
 
-  console.log(JSON.stringify(res, null, 2));
-
+  console.log("[%s] logged in as user %s (%s)", new Date().toISOString(), res.user.full_name, res.user._id);
+  console.log("[%s] filter: %s between %s & %s within %s", new Date().toISOString(), res.user.gender_filter ? "females" : "males", res.user.age_filter_min, res.user.age_filter_max, res.user.distance_filter);
+  
   tinder.beginPolling();
+
 });
